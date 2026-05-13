@@ -5,26 +5,63 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
     <style>
-        body { background-color: #88ccff; margin: 0; overflow: hidden; font-family: sans-serif; }
-        #info { position: absolute; top: 0px; width: 100%; padding: 10px; text-align: center; color: white; text-shadow: 1px 1px 2px black; }
+        body { 
+            background-color: #88ccff; 
+            margin: 0; 
+            overflow: hidden; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        }
+
+        /* Contenedor del juego */
+        #container {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        /* Estilo del Footer */
+        #footer { 
+            position: absolute; 
+            bottom: 0px; 
+            width: 100%; 
+            padding: 15px; 
+            text-align: center; 
+            color: white; 
+            background: rgba(0, 0, 0, 0.6); /* Un poco más oscuro para que resalte */
+            backdrop-filter: blur(8px); 
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            box-sizing: border-box;
+            z-index: 10; /* Para que siempre esté arriba del juego */
+        }
+
+        #footer b { color: #ffcc00; }
+        
+        .controls {
+            font-size: 0.85em;
+            margin-top: 5px;
+            opacity: 0.9;
+        }
     </style>
 </head>
 <body>
-    <div id="info">
-        <b>Práctica 3.4: Física e interacción 3D</b><br />
-        Jaqueline Hernández Hernández<br />
-        CLICK PARA JUGAR | WASD: Mover | SPACE: Saltar | MOUSE: Mirar
-    </div>
+    
     <div id="container"></div>
 
-     <script type="importmap">
+    <div id="footer">
+        <b>Práctica 3.4: Física e interacción 3D</b> | Jaqueline Hernández Hernández<br />
+        <div class="controls">
+            CLICK PARA JUGAR • WASD: Mover • ESPACIO: Saltar • RATÓN: Mirar
+        </div>
+    </div>
+
+    <script type="importmap">
     {
-            "imports": {
-                "three": "https://unpkg.com/three@0.150.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.150.0/examples/jsm/"
-            }
+        "imports": {
+            "three": "https://unpkg.com/three@0.150.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.150.0/examples/jsm/"
         }
-</script>
+    }
+    </script>
 
     <script type="module">
         import * as THREE from 'three';
@@ -63,7 +100,12 @@
         const keyStates = {};
         document.addEventListener( 'keydown', ( event ) => { keyStates[ event.code ] = true; } );
         document.addEventListener( 'keyup', ( event ) => { keyStates[ event.code ] = false; } );
-        container.addEventListener( 'mousedown', () => { document.body.requestPointerLock(); } );
+        
+        // El click ahora funciona en toda la ventana para que no falle
+        window.addEventListener( 'mousedown', () => { 
+            document.body.requestPointerLock(); 
+        } );
+
         document.body.addEventListener( 'mousemove', ( event ) => {
             if ( document.pointerLockElement === document.body ) {
                 camera.rotation.y -= event.movementX / 500;
@@ -72,7 +114,7 @@
         } );
 
         const loader = new GLTFLoader();
-        // ESTA RUTA DEBE COINCIDIR CON TU ARCHIVO DE LA IMAGEN image_1da2b4.png
+        // Carga el mundo (asegúrate de que este archivo esté en tu carpeta)
         loader.load( './collision-world.glb', ( gltf ) => {
             scene.add( gltf.scene );
             worldOctree.fromGraphNode( gltf.scene );
@@ -135,6 +177,12 @@
             renderer.render( scene, camera );
             requestAnimationFrame( animate );
         }
+
+        window.addEventListener( 'resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize( window.innerWidth, window.innerHeight );
+        });
     </script>
 </body>
 </html>
