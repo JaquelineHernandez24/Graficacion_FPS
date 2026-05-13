@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>3.4 Física e interacción 3D - Jaqueline</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+    <style>
+        body { background-color: #88ccff; margin: 0; overflow: hidden; font-family: sans-serif; }
+        #info { position: absolute; top: 0px; width: 100%; padding: 10px; text-align: center; color: white; text-shadow: 1px 1px 2px black; }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <b>Práctica 3.4: Física e interacción 3D</b><br />
+        Jaqueline Hernández Hernández<br />
+        CLICK PARA JUGAR | WASD: Mover | SPACE: Saltar | MOUSE: Mirar
+    </div>
+    <div id="container"></div>
+
+     <script type="importmap">
+    {
+            "imports": {
+                "three": "https://unpkg.com/three@0.150.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.150.0/examples/jsm/"
+            }
+        }
+</script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { Octree } from 'three/addons/math/Octree.js';
+        import { Capsule } from 'three/addons/math/Capsule.js';
+
+        const clock = new THREE.Clock();
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color( 0x88ccff );
+        scene.fog = new THREE.Fog( 0x88ccff, 0, 50 );
+
+        const camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.1, 1000 );
+        camera.rotation.order = 'YXZ';
+
+        const ambientLight = new THREE.AmbientLight( 0xffffff, 0.4 );
+        scene.add( ambientLight );
+
+        const fillLight1 = new THREE.DirectionalLight( 0xffffff, 0.8 );
+        fillLight1.position.set( 5, 2, 1 );
+        scene.add( fillLight1 );
+
+        const container = document.getElementById( 'container' );
+        const renderer = new THREE.WebGLRenderer( { antialias: true } );
+        renderer.setPixelRatio( window.devicePixelRatio );
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        container.appendChild( renderer.domElement );
+
+        const GRAVITY = 30;
+        const worldOctree = new Octree();
+        const playerCollider = new Capsule( new THREE.Vector3( 0, 0.35, 0 ), new THREE.Vector3( 0, 1, 0 ), 0.35 );
+        const playerVelocity = new THREE.Vector3();
+        const playerDirection = new THREE.Vector3();
+        let playerOnGround = false;
+
+        const keyStates = {};
+        document.addEventListener( 'keydown', ( event ) => { keyStates[ event.code ] = true; } );
+        document.addEventListener( 'keyup', ( event ) => { keyStates[ event.code ] = false; } );
+        container.addEventListener( 'mousedown', () => { document.body.requestPointerLock(); } );
+        document.body.addEventListener( 'mousemove', ( event ) => {
+            if ( document.pointerLockElement === document.body ) {
+                camera.rotation.y -= event.movementX / 500;
+                camera.rotation.x -= event.movementY / 500;
+            }
+        } );
+
+        const loader = new GLTFLoader();
+        // ESTA RUTA DEBE COINCIDIR CON TU ARCHIVO DE LA IMAGEN image_1da2b4.png
+        loader.load( './collision-world.glb', ( gltf ) => {
+            scene.add( gltf.scene );
+            worldOctree.fromGraphNode( gltf.scene );
+            animate();
+        } );
+
+        function playerCollisions() {
+            const result = worldOctree.capsuleIntersect( playerCollider );
+            playerOnGround = false;
+            if ( result ) {
+                playerOnGround = result.normal.y > 0;
+                if ( ! playerOnGround ) {
+                    playerVelocity.addScaledVector( result.normal, - result.normal.dot( playerVelocity ) );
+                }
+                playerCollider.translate( result.normal.multiplyScalar( result.depth ) );
+            }
+        }
+
+        function updatePlayer( deltaTime ) {
+            let damping = Math.exp( - 4 * deltaTime ) - 1;
+            if ( ! playerOnGround ) {
+                playerVelocity.y -= GRAVITY * deltaTime;
+                damping = Math.exp( - 1.5 * deltaTime ) - 1;
+            }
+            playerVelocity.addScaledVector( playerVelocity, damping );
+            const deltaPosition = playerVelocity.clone().multiplyScalar( deltaTime );
+            playerCollider.translate( deltaPosition );
+            playerCollisions();
+            camera.position.copy( playerCollider.end );
+        }
+
+        function getForwardVector() {
+            camera.getWorldDirection( playerDirection );
+            playerDirection.y = 0;
+            playerDirection.normalize();
+            return playerDirection;
+        }
+
+        function getSideVector() {
+            camera.getWorldDirection( playerDirection );
+            playerDirection.y = 0;
+            playerDirection.normalize();
+            playerDirection.cross( camera.up );
+            return playerDirection;
+        }
+
+        function controls( deltaTime ) {
+            const speedDelta = deltaTime * ( playerOnGround ? 25 : 8 );
+            if ( keyStates[ 'KeyW' ] ) playerVelocity.addScaledVector( getForwardVector(), speedDelta );
+            if ( keyStates[ 'KeyS' ] ) playerVelocity.addScaledVector( getForwardVector(), - speedDelta );
+            if ( keyStates[ 'KeyA' ] ) playerVelocity.addScaledVector( getSideVector(), - speedDelta );
+            if ( keyStates[ 'KeyD' ] ) playerVelocity.addScaledVector( getSideVector(), speedDelta );
+            if ( playerOnGround && keyStates[ 'Space' ] ) playerVelocity.y = 15;
+        }
+
+        function animate() {
+            const deltaTime = Math.min( 0.05, clock.getDelta() );
+            controls( deltaTime );
+            updatePlayer( deltaTime );
+            renderer.render( scene, camera );
+            requestAnimationFrame( animate );
+        }
+    </script>
+</body>
+</html>
